@@ -1,0 +1,21 @@
+# data config
+data_path: data/train.txt
+# model config
+batch_size: 64
+block_size: 256
+vocab_size: 7587
+n_layer: 12
+n_head: 12
+n_embd: 768
+dropout: 0.0
+bias: True
+# training config
+max_epoch : 1919810
+tensorboard_path :  ./tensorboard
+lr :  1e-4
+# checkpoint config
+checkpoint_root: ./checkpoints
+save_freq: 1000 # save when global_step % save_freq == 0
+resume_from: NULL
+# other config
+seed :  114514
