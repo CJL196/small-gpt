@@ -12,7 +12,7 @@ class GPT(nn.Module):
             wpe = nn.Embedding(block_size, n_embd), # position embedding
             drop = nn.Dropout(dropout),
             h = nn.ModuleList([DecoderBlock(block_size, n_embd, n_head, bias, dropout) for _ in range(n_layer)]),
-            ln_f = LayerNorm(block_size, n_embd, bias),
+            ln_f = LayerNorm(n_embd, bias),
         ))
         self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
         self.block_size = block_size
