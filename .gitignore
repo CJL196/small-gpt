@@ -2,4 +2,4 @@ __pycache__
 draft.ipynb
 data
 tensorboard
-work_dir
+checkpoints

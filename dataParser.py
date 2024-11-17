@@ -21,7 +21,7 @@ def read_tokens(path:str):
     return tokens
 
 
-def read_tokens_idx(tokens, vocab, seq_len=None):
+def read_tokens_idx(tokens, vocab, seq_len=None, show_bar=True):
     """
     获取标号数据集
     返回一个2维tensor，每个元素为token字符对应的标号
@@ -31,12 +31,18 @@ def read_tokens_idx(tokens, vocab, seq_len=None):
         seq_len = max([len(token) for token in tokens])
     ret = np.zeros((len(tokens), seq_len), dtype=np.int16)
     pad_idx = vocab['<pad>'] # 大多数token为<pad>，避免重复查询vocab
-    for i, sentence in tqdm(enumerate(tokens), desc='Loading tokens idx', total=len(tokens)):
-        for j in range(seq_len):
-            if j < len(sentence):
-                ret[i][j] = vocab[sentence[j]]
-        ret[i][len(sentence):] = pad_idx
-
+    if show_bar:
+        for i, sentence in tqdm(enumerate(tokens), desc='Loading tokens idx', total=len(tokens)):
+            for j in range(seq_len):
+                if j < len(sentence):
+                    ret[i][j] = vocab[sentence[j]]
+            ret[i][len(sentence):] = pad_idx
+    else:
+        for i, sentence in enumerate(tokens):
+            for j in range(seq_len):
+                if j < len(sentence):
+                    ret[i][j] = vocab[sentence[j]]
+            ret[i][len(sentence):] = pad_idx
     return ret
 
 def build_vocab(tokens):
@@ -92,6 +98,14 @@ def count_corpus(tokens):
         # 将词元列表展平成一个列表
     tokens = [token for line in tokens for token in line]
     return collections.Counter(tokens)
+
+def tokens_dataloader(tokens_idx, batch_size, pad_idx, is_train=True):
+    """构造一个PyTorch数据迭代器"""
+    from torch.utils import data
+    add = torch.full((tokens_idx.shape[0], 1), pad_idx, dtype=torch.int64)
+    y = torch.cat([tokens_idx[:, 1:], add], dim=-1)
+    dataset = data.TensorDataset(tokens_idx, y)
+    return data.DataLoader(dataset, batch_size, shuffle=is_train)
 
 if __name__ == "__main__":
     path = 'data/train.txt'

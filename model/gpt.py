@@ -63,7 +63,7 @@ class GPT(nn.Module):
         return logits, loss
     
     @torch.no_grad()
-    def generate(self, x, max_new_tokens, temperature=1.0, top_k=None):
+    def generate(self, x, max_new_tokens, temperature=1.0, stop_token=None, top_k=None):
         """
         x.shape = (batch_size, 上下文长度)
         预测max_new_tokens次，每次都将预测的结果和x拼接
@@ -86,9 +86,31 @@ class GPT(nn.Module):
             # 采样
             pred = torch.multinomial(probs, num_samples=1)
             # append sampled index to the running sequence and continue
+            if stop_token is not None and pred == stop_token:
+                break
             x = torch.cat((x, pred), dim=1)
+            
 
         return x
+    
+    @torch.no_grad()
+    def generate_once(self, x, temperature=1.0, top_k=None):
+        # 如果上下文太长，需要裁剪至长度为seq_len
+        cropped = x if x.size(1) <= self.block_size else x[:, -self.block_size:]
+        # 前向推理
+        logits, _ = self(cropped)
+        # logits.shape = (batch_size, seq_len, vocab_size)
+        # 在最后一步提取 logits 并按所需温度进行缩放
+        # 温度越高，概率分布更加平滑，低概率的 token 也有较大的机会被选中。文本生成更具创造性，结果更具多样性。
+        logits = logits[:, -1, :] / temperature
+        # 只考虑前topk
+        if top_k is not None:
+            v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+            logits[logits < v[:, [-1]]] = -float('Inf')
+        probs = F.softmax(logits, dim=-1)
+        # 采样
+        pred = torch.multinomial(probs, num_samples=1)
+        return pred
     
 
 """
