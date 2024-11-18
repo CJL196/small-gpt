@@ -23,7 +23,10 @@ def main(config):
     assert config.vocab_size >= len(vocab), f'vocab_size({config.vocab_size}) < len(vocab)({len(vocab)})'
     print(f"Data Loaded, vocab size = {config.vocab_size}")
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if config.device == 'cuda' and not torch.cuda.is_available():
+        config.device = 'cpu'
+        print('cuda not available, use cpu instead')
+    device = torch.device(config.device)
     pad_idx = vocab['<pad>'] 
 
     data_loader = tokens_dataloader(tokens_idx, config.batch_size, pad_idx, is_train=True)
@@ -39,12 +42,12 @@ def main(config):
         config.bias, 
     ).to(device)
     model.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
+    optimizer = model.configure_optimizers(config.weight_decay, config.lr, (config.beta1, config.beta2), config.device)
     
     # 加载checkpoint manager
     checkpoint_manager = CheckpointManager(config.checkpoint_root)
     if config.resume_from is not None:
-        model, global_step, global_epoch = checkpoint_manager.load(config.resume_from, model)
+        model, global_step, global_epoch = checkpoint_manager.load(config.resume_from, model, optimizer)
     
     writer = SummaryWriter(config.tensorboard_path)
     
@@ -63,7 +66,7 @@ def main(config):
             optimizer.step()
             
             if global_step % config.save_freq == 0:
-                checkpoint_manager.save(model, config, global_step, global_epoch)
+                checkpoint_manager.save(model, config, global_step, global_epoch, optimizer)
             
         global_epoch += 1
         

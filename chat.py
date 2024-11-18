@@ -22,7 +22,10 @@ def main(config):
     assert config.vocab_size >= len(vocab), f'vocab_size({config.vocab_size}) < len(vocab)({len(vocab)})'
     print(f"Data Loaded, vocab size = {config.vocab_size}")
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if config.device == 'cuda' and not torch.cuda.is_available():
+        config.device = 'cpu'
+        print('cuda not available, use cpu instead')
+    device = torch.device(config.device)
     pad_idx = vocab['<pad>'] 
     sep_idx = vocab['<sep>']
 
@@ -62,7 +65,18 @@ def main(config):
     #             print()
     #     print()
     history = None
+    # initial_prompt = ['在吗', '在滴，又来找我聊天啦', '小姐姐真好看哟', '小哥哥帅捏']
+    # for p in initial_prompt:
+    #     p = list(p) + ['<sep>']
+    #     p = read_tokens_idx([p], vocab, seq_len=len(p), show_bar=False)
+    #     p = torch.tensor(p, dtype=torch.int64).to(device)
+    #     if history is None:
+    #         history = p
+    #     else:
+    #         history = torch.cat((history, p), dim=-1)
+
     while True:
+        # history = None # 清空历史记录
         prompt = input('>>>')
         if prompt == 'exit':
             break

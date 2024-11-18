@@ -12,10 +12,15 @@ bias: True
 # training config
 max_epoch : 1919810
 tensorboard_path :  ./tensorboard
+device: cuda
+# AdamW optimizer
 lr :  1e-4
+weight_decay : 1e-1
+beta1: 0.9
+beta2: 0.95
 # checkpoint config
 checkpoint_root: ./checkpoints
-save_freq: 1000 # save when global_step % save_freq == 0
-resume_from: NULL
+save_freq: 4000 # save when global_step % save_freq == 0
+resume_from: checkpoints/cpt41010.pth
 # other config
 seed :  114514

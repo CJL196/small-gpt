@@ -3,6 +3,7 @@ from .layernorm import LayerNorm
 import torch, math
 from torch import nn
 from torch.nn import functional as F
+import inspect
 
 class GPT(nn.Module):
     def __init__(self, block_size:int, vocab_size:int, n_layer:int, n_head:int, n_embd:int, dropout:float, bias:bool):
@@ -31,7 +32,31 @@ class GPT(nn.Module):
         if non_embedding:
             n_params -= self.transformer.wpe.weight.numel()
         return n_params
-        
+    
+    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
+        # 所有参数
+        param_dict = {pn: p for pn, p in self.named_parameters()}
+        # 只保留需要梯度的参数
+        param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
+        # 是否需要权重衰减
+        decay_params = [p for n, p in param_dict.items() if p.dim() >= 2]
+        nodecay_params = [p for n, p in param_dict.items() if p.dim() < 2]
+        optim_groups = [
+            {'params': decay_params, 'weight_decay': weight_decay},
+            {'params': nodecay_params, 'weight_decay': 0.0}
+        ]
+        num_decay_params = sum(p.numel() for p in decay_params)
+        num_nodecay_params = sum(p.numel() for p in nodecay_params)
+        print(f"num decayed parameter tensors: {len(decay_params)}, with {num_decay_params:,} parameters")
+        print(f"num non-decayed parameter tensors: {len(nodecay_params)}, with {num_nodecay_params:,} parameters")
+        # AdamW optimizer
+        fused_available = 'fused' in inspect.signature(torch.optim.AdamW).parameters
+        use_fused = fused_available and device_type == 'cuda'
+        extra_args = dict(fused=True) if use_fused else dict()
+        optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas, **extra_args)
+        print(f"using fused AdamW: {use_fused}")
+
+        return optimizer
         
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
