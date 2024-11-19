@@ -20,9 +20,8 @@ test_batch: 8
 grad_clip: 1.0
 # learning rate
 lr : 6e-4
-decay_lr: True 
 warmup_steps: 4000
-lr_decay_steps: 600000
+decay_steps: 600000
 min_lr: 6e-5
 
 
