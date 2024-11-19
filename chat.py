@@ -12,6 +12,7 @@ from checkpointManager import CheckpointManager
 
 
 def main(config):
+    torch.manual_seed(config.seed)
 
     # 准备数据集
     print('Loading tokens')

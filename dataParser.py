@@ -20,6 +20,12 @@ def read_tokens(path:str):
             tokens[i]=d
     return tokens
 
+def split_train_test(tokens, train_percent):
+    total_dialog = len(tokens)
+    train_dialog = int(total_dialog * train_percent)
+    train_tokens = tokens[:train_dialog]
+    test_tokens = tokens[train_dialog:]
+    return train_tokens, test_tokens
 
 def read_tokens_idx(tokens, vocab, seq_len=None, show_bar=True):
     """

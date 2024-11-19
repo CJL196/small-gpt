@@ -1,7 +1,7 @@
 # data config
 data_path: data/train.txt
+train_percent: 0.8
 # model config
-batch_size: 64
 block_size: 256
 vocab_size: 7587
 n_layer: 12
@@ -9,18 +9,30 @@ n_head: 12
 n_embd: 768
 dropout: 0.0
 bias: True
+compile: True
 # training config
 max_epoch : 1919810
 tensorboard_path :  ./tensorboard
 device: cuda
+eval_freq: 4000
+train_batch: 86
+test_batch: 8
+grad_clip: 1.0
+# learning rate
+lr : 6e-4
+decay_lr: True 
+warmup_steps: 4000
+lr_decay_steps: 600000
+min_lr: 6e-5
+
+
 # AdamW optimizer
-lr :  1e-4
 weight_decay : 1e-1
 beta1: 0.9
 beta2: 0.95
 # checkpoint config
 checkpoint_root: ./checkpoints
 save_freq: 4000 # save when global_step % save_freq == 0
-resume_from: checkpoints/cpt56000.pth
+resume_from: NULL
 # other config
 seed :  114514
