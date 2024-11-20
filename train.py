@@ -74,14 +74,14 @@ def main(config):
     
     optimizer = model.configure_optimizers(config.weight_decay, config.lr, (config.beta1, config.beta2), config.device)
     
+    if config.compile:
+        print('compiling the model... this might take a while')
+        model = torch.compile(model)
+    
     # 加载checkpoint manager
     checkpoint_manager = CheckpointManager(config.checkpoint_root)
     if config.resume_from is not None:
         model, global_step, global_epoch = checkpoint_manager.load(config.resume_from, model, optimizer)
-        
-    if config.compile:
-        print('compiling the model... this might take a while')
-        model = torch.compile(model)
     
     writer = SummaryWriter(config.tensorboard_path)
     

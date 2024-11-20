@@ -42,6 +42,10 @@ def main(config):
     ).to(device)
     model.eval()
     
+    if config.compile:
+        print('compiling the model... this might take a while')
+        model = torch.compile(model)
+    
     # 加载checkpoint manager
     checkpoint_manager = CheckpointManager(config.checkpoint_root)
     if config.resume_from is not None:
