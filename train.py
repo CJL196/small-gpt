@@ -58,8 +58,8 @@ def main(config):
     
     pad_idx = vocab['<pad>'] 
 
-    train_data_loader = tokens_dataloader(train_idx, config.train_batch, pad_idx, is_train=True)
-    test_data_loader = tokens_dataloader(test_idx, config.test_batch, pad_idx, is_train=False)
+    train_data_loader = tokens_dataloader(train_idx, config.train_batch, pad_idx, shuffle=True)
+    test_data_loader = tokens_dataloader(test_idx, config.test_batch, pad_idx, shuffle=True)
     
     # 加载模型
     model = GPT(
@@ -94,6 +94,7 @@ def main(config):
             y = y.to(device)
             global_step += 1
             lr = calc_lr(config, global_step)
+            writer.add_scalar('lr', lr, global_step)
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
             
@@ -131,6 +132,8 @@ def main(config):
                         total_loss += loss.item()
                         prog_bar.set_description(f'{test_step}|{global_epoch}|loss={loss.item():.8}')
                         test_step += 1
+                        if test_step > config.eval_steps:
+                            break
                 writer.add_scalar('test_loss', total_loss/test_step, global_step)
                 model.train()
         global_epoch += 1

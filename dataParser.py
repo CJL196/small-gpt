@@ -105,13 +105,13 @@ def count_corpus(tokens):
     tokens = [token for line in tokens for token in line]
     return collections.Counter(tokens)
 
-def tokens_dataloader(tokens_idx, batch_size, pad_idx, is_train=True):
+def tokens_dataloader(tokens_idx, batch_size, pad_idx, shuffle=True):
     """构造一个PyTorch数据迭代器"""
     from torch.utils import data
     add = torch.full((tokens_idx.shape[0], 1), pad_idx, dtype=torch.int64)
     y = torch.cat([tokens_idx[:, 1:], add], dim=-1)
     dataset = data.TensorDataset(tokens_idx, y)
-    return data.DataLoader(dataset, batch_size, shuffle=is_train)
+    return data.DataLoader(dataset, batch_size, shuffle=shuffle)
 
 if __name__ == "__main__":
     path = 'data/train.txt'

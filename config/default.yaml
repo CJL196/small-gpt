@@ -7,22 +7,23 @@ vocab_size: 7587
 n_layer: 12
 n_head: 12
 n_embd: 768
-dropout: 0.0
+dropout: 0.2
 bias: True
 compile: True
 # training config
 max_epoch : 1919810
 tensorboard_path :  ./tensorboard
 device: cuda
-eval_freq: 4000
-train_batch: 86
+eval_freq: 500
+eval_steps: 1000
+train_batch: 80
 test_batch: 8
 grad_clip: 1.0
 # learning rate
-lr : 6e-4
-warmup_steps: 4000
-decay_steps: 600000
-min_lr: 6e-5
+lr : 3e-4
+warmup_steps: 2000
+decay_steps: 100000
+min_lr: 6e-6
 
 
 # AdamW optimizer
@@ -32,6 +33,6 @@ beta2: 0.95
 # checkpoint config
 checkpoint_root: ./checkpoints
 save_freq: 4000 # save when global_step % save_freq == 0
-resume_from: checkpoints/cpt100000.pth
+resume_from: NULL
 # other config
 seed :  114514
