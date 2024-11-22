@@ -85,6 +85,9 @@ def main(config):
         prompt = input('>>>')
         if prompt == 'exit':
             break
+        if prompt == 'flush':
+            history = None
+            continue
         prompt_token = list(prompt) + ['<sep>']
         if len(prompt_token) > config.block_size:
             prompt_token = prompt_token[-config.block_size:]
@@ -97,7 +100,7 @@ def main(config):
         for i in range(100):
             if history.shape[1] > config.block_size:
                 history = history[:, -config.block_size:]
-            pred = model.generate_once(history, temperature=1.0)
+            pred = model.generate_once(history, temperature=0.5)
             c = vocab.to_tokens(pred)
             
             if c == '<pad>' or c == '<sep>':

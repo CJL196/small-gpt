@@ -33,6 +33,6 @@ beta2: 0.95
 # checkpoint config
 checkpoint_root: ./checkpoints
 save_freq: 4000 # save when global_step % save_freq == 0
-resume_from: checkpoints/cpt36000.pth
+resume_from: checkpoints/cpt120000.pth
 # other config
 seed :  114514
