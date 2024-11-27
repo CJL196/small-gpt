@@ -111,11 +111,20 @@ def main(config):
     else:
         raise ValueError('You should specify resume_from or base_model in config file')
     
+    if config.frozen:
+        unfrozen_params = [f'h.{config.n_layer-1}', 'ln_f']
+        for name, param in model.named_parameters():
+            if any([f in name for f in unfrozen_params]):
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+        # for name, param in model.named_parameters():
+        #     if param.requires_grad:
+        #         print(f'{name} is not frozen')
+    
     if config.compile:
         print('compiling the model... this might take a while')
         model = torch.compile(model)
-    
-    
         
     writer = SummaryWriter(config.tensorboard_path)
     
