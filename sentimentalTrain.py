@@ -1,16 +1,25 @@
-from dataParser import read_tokens, read_tokens_idx, build_vocab, tokens_dataloader, split_train_test
+from dataParser import read_tokens, read_tokens_idx, build_vocab
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
-import torch, math
+import torch
+from torch import nn
 from tqdm import tqdm
 from model import GPT
 import os, argparse
+from dataParser import tokens_dataloader
 from checkpointManager import CheckpointManager
-from torch.cuda.amp import GradScaler, autocast
+from sentimentalData import get_data
+import math
 from contextlib import nullcontext
 
 global_step = 0
 global_epoch = 0
+
+def change_model_head(model, num_classes=2):
+    lm_head = getattr(model, 'lm_head')
+    setattr(model, 'lm_head', nn.Linear(lm_head.in_features, num_classes))
+    return model
+    
 
 def calc_lr(config, step):
     if step < config.warmup_steps:
@@ -25,27 +34,26 @@ def calc_lr(config, step):
 
 def main(config):
     global global_step, global_epoch
-
     torch.manual_seed(config.seed)
+
     # 准备数据集
-    print('Loading tokens')
-    tokens = read_tokens(config.data_path)
-    # 划分训练和测试
-    train_tokens, test_tokens = split_train_test(tokens, config.train_percent)
     print('Loading Vocab')
+    tokens = read_tokens(config.data_path)
+    
     vocab = build_vocab(tokens)
+    
     assert config.vocab_size >= len(vocab), f'vocab_size({config.vocab_size}) < len(vocab)({len(vocab)})'
-    print(f"vocab size = {config.vocab_size}")
+    print(f"Vocab Loaded, size = {config.vocab_size}")
     
-    print('Loading tokens_idx tensor, which may take some time')
-    train_idx = torch.tensor(read_tokens_idx(train_tokens, vocab, seq_len=config.block_size), dtype=torch.int64)
-    test_idx = torch.tensor(read_tokens_idx(test_tokens, vocab, seq_len=config.block_size), dtype=torch.int64)
-    
+    train_loader, test_loader = get_data(vocab, config)
+    print('Sentimental train data loaded')
 
     if config.device == 'cuda' and not torch.cuda.is_available():
         config.device = 'cpu'
         print('cuda not available, use cpu instead')
     device = torch.device(config.device)
+    pad_idx = vocab['<pad>'] 
+    sep_idx = vocab['<sep>']
     
     # 使用混合精度训练
     dtype = 'bfloat16' if config.device == 'cuda' and torch.cuda.is_bf16_supported() else 'float16'
@@ -55,12 +63,7 @@ def main(config):
     # 使用grad scaler，在混合精度训练中避免梯度 underflow 的问题
     # 反向传播前动态放大梯度的数值范围，然后在更新模型参数前再将梯度缩小到原始范围。
     scaler = torch.cuda.amp.GradScaler(enabled=(dtype == 'float16'))
-    
-    pad_idx = vocab['<pad>'] 
 
-    train_data_loader = tokens_dataloader(train_idx, config.train_batch, pad_idx, shuffle=True)
-    test_data_loader = tokens_dataloader(test_idx, config.test_batch, pad_idx, shuffle=True)
-    
     # 加载模型
     model = GPT(
         config.block_size,
@@ -72,8 +75,6 @@ def main(config):
         config.bias, 
     ).to(device)
     
-    optimizer = model.configure_optimizers(config.weight_decay, config.lr, (config.beta1, config.beta2), config.device)
-    
     if config.compile:
         print('compiling the model... this might take a while')
         model = torch.compile(model)
@@ -81,14 +82,26 @@ def main(config):
     # 加载checkpoint manager
     checkpoint_manager = CheckpointManager(config.checkpoint_root)
     if config.resume_from is not None:
-        model, global_step, global_epoch = checkpoint_manager.load(config.resume_from, model, optimizer)
+        print(f'resume from {config.resume_from}')
+        model = change_model_head(model, num_classes=2)
+        model, _, _ = checkpoint_manager.load(config.resume_from, model)
+    elif config.base_model is not None:
+        print(f'load base model from {config.base_model}')
+        model, _, _ = checkpoint_manager.load(config.base_model, model)
+        model = change_model_head(model, num_classes=2)
+    else:
+        raise ValueError('You should specify resume_from or base_model in config file')
     
+    optimizer = model.configure_optimizers(config.weight_decay, config.lr, (config.beta1, config.beta2), config.device)
+    
+    
+        
     writer = SummaryWriter(config.tensorboard_path)
     
     print('Start Training')
     while global_epoch < config.max_epoch:
         model.train()
-        prog_bar = tqdm(train_data_loader)
+        prog_bar = tqdm(train_loader)
         for x, y in prog_bar:
             x = x.to(device)
             y = y.to(device)
@@ -97,13 +110,14 @@ def main(config):
             writer.add_scalar('lr', lr, global_step)
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
-            
             optimizer.zero_grad()
             with ctx:
-                _, loss = model(x, y)
-            
-            prog_bar.set_description(f'{global_step}|{global_epoch}|loss={loss.item():.8}')
+                logits, _ = model(x)
+                loss = nn.functional.cross_entropy(logits.view(-1, logits.size(-1)), y.view(-1), ignore_index=-1)
+                accuracy = (logits.argmax(dim=-1) == y).float().mean()
+            prog_bar.set_description(f'{global_step}|{global_epoch}|loss={loss.item():.8}|accuracy={accuracy:.4}')
             writer.add_scalar('loss', loss.item(), global_step)
+            writer.add_scalar('accuracy', accuracy, global_step)
             # loss.backward()
             scaler.scale(loss).backward()
             # 裁剪梯度，防止梯度爆炸
@@ -112,30 +126,32 @@ def main(config):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
             scaler.step(optimizer)
             scaler.update()
-            # optimizer.step()
             
             if global_step % config.save_freq == 0:
                 checkpoint_manager.save(model, config, global_step, global_epoch, optimizer)
         
-            if global_step % config.eval_freq == 0:
-                print(f'Testing')
-                test_prog_bar = tqdm(test_data_loader)
-                model.eval()
-                total_loss = 0
-                test_step = 0
-                with torch.no_grad():
-                    for x, y in test_prog_bar:
-                        x = x.to(device)
-                        y = y.to(device)
-                        with ctx:
-                            _, loss = model(x, y)
-                        total_loss += loss.item()
-                        test_prog_bar.set_description(f'{test_step}|{global_epoch}|loss={loss.item():.8}')
-                        test_step += 1
-                        if test_step > config.eval_steps:
-                            break
-                writer.add_scalar('test_loss', total_loss/test_step, global_step)
-                model.train()
+            
+        print(f'Testing')
+        test_prog_bar = tqdm(test_loader)
+        model.eval()
+        total_loss = 0
+        test_step = 0
+        total_accuracy = 0
+        with torch.no_grad():
+            for x, y in test_prog_bar:
+                x = x.to(device)
+                y = y.to(device)
+                with ctx:
+                    logits, _ = model(x)
+                    loss = nn.functional.cross_entropy(logits.view(-1, logits.size(-1)), y.view(-1), ignore_index=-1)
+                    accuracy = (logits.argmax(dim=-1) == y).float().mean()
+                total_loss += loss.item()
+                total_accuracy += accuracy.item()
+                test_prog_bar.set_description(f'{test_step}|{global_epoch}|loss={loss.item():.8}|accuracy={accuracy:.4}')
+                test_step += 1
+        writer.add_scalar('test_loss', total_loss/test_step, global_step)
+        writer.add_scalar('test_accuracy', total_accuracy/test_step, global_step)
+        model.train()
         global_epoch += 1
         
 def parse_args():

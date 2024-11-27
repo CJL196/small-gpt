@@ -1,5 +1,6 @@
 # data config
 data_path: data/train.txt
+sentimental_data_path: data/ChnSentiCorp_htl_all.csv
 train_percent: 0.8
 # model config
 block_size: 256
@@ -14,8 +15,8 @@ compile: True
 max_epoch : 1919810
 tensorboard_path :  ./tensorboard
 device: cuda
-eval_freq: 500
-eval_steps: 1000
+
+
 train_batch: 24
 test_batch: 8
 grad_clip: 1.0
@@ -33,6 +34,7 @@ beta2: 0.95
 # checkpoint config
 checkpoint_root: ./checkpoints
 save_freq: 4000 # save when global_step % save_freq == 0
-resume_from: checkpoints/old/1123-300M/cpt100000.pth
+base_model: checkpoints/old/1123-300M/cpt100000.pth
+resume_from: NULL
 # other config
 seed :  114514
