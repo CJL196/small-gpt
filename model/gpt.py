@@ -66,7 +66,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
     
-    def forward(self, x, targets=None):
+    def forward(self, x, targets=None, sentimental=False):
         device = x.device
         batch_size, seq_len = x.shape
         assert seq_len <= self.block_size, f"Cannot forward sequence of length {seq_len}, block size is only {self.block_size}"
@@ -82,6 +82,9 @@ class GPT(nn.Module):
         if targets is not None: # 训练
             logits = self.lm_head(x)
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
+        elif sentimental: # 情感推理
+            logits = self.lm_head(x)
+            return logits
         else: # 推理
             logits = self.lm_head(x[:, [-1], :]) # 取最后一个token的logits
             loss = None

@@ -131,4 +131,10 @@ if __name__ == '__main__':
     attention.eval()
     
     X = torch.ones((batch_size, seq_len, num_hiddens)).to(device)
+    print(X.shape)
     print(attention(X).shape)
+
+"""
+torch.Size([16, 50, 100])
+torch.Size([16, 50, 100])
+"""

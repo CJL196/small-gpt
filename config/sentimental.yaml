@@ -11,6 +11,7 @@ n_embd: 960
 dropout: 0.05
 bias: True
 compile: True
+use_mask: True
 # training config
 max_epoch : 1919810
 tensorboard_path :  ./tensorboard
@@ -33,7 +34,7 @@ beta1: 0.9
 beta2: 0.95
 # checkpoint config
 checkpoint_root: ./checkpoints
-save_freq: 4000 # save when global_step % save_freq == 0
+save_freq: 1000 # save when global_step % save_freq == 0
 base_model: checkpoints/old/1123-300M/cpt100000.pth
 resume_from: NULL
 # other config

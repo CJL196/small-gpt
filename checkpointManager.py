@@ -20,10 +20,13 @@ class CheckpointManager:
         self.save_root = save_root
         if not os.path.exists(save_root):
             os.makedirs(save_root)
-    def load(self, path, model, optimizer=None):
+    def load(self, path, model, optimizer=None, compile=True):
         print(f'Loading State Dict from {path}')
         checkpoint = torch.load(path)
-        model.load_state_dict(checkpoint['state_dict'])
+        state_dict = checkpoint['state_dict']
+        if not compile:
+            state_dict = {k.replace("_orig_mod.", ""): v for k, v in state_dict.items()}
+        model.load_state_dict(state_dict)
         if optimizer is not None:
             optimizer.load_state_dict(checkpoint['optimizer'])
         global_step = checkpoint['global_step']

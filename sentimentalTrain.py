@@ -15,11 +15,23 @@ from contextlib import nullcontext
 global_step = 0
 global_epoch = 0
 
-def change_model_head(model, num_classes=2):
-    lm_head = getattr(model, 'lm_head')
-    setattr(model, 'lm_head', nn.Linear(lm_head.in_features, num_classes))
+def change_model_head(model, device, num_classes=2):
+    lm_head = model.lm_head
+    new_lm_head = nn.Linear(lm_head.in_features, num_classes, bias=lm_head.bias).to(device)
+    setattr(model, 'lm_head', new_lm_head)
+
     return model
     
+def add_start_and_extract_to_model(model, vocab, device):
+    """
+    添加新的token到模型的Embedding中
+    """
+    original_embedding = model.transformer.wte
+    new_embedding = nn.Embedding(len(vocab), original_embedding.embedding_dim).to(device)
+    new_embedding.weight.data[:len(vocab)-2] = original_embedding.weight.data
+    # print(new_embedding.weight)
+    model.transformer.wte = new_embedding
+    return model
 
 def calc_lr(config, step):
     if step < config.warmup_steps:
@@ -41,9 +53,11 @@ def main(config):
     tokens = read_tokens(config.data_path)
     
     vocab = build_vocab(tokens)
+    add_tokens = ['<start>', '<extract>']
+    vocab.insert_token(add_tokens)
     
-    assert config.vocab_size >= len(vocab), f'vocab_size({config.vocab_size}) < len(vocab)({len(vocab)})'
-    print(f"Vocab Loaded, size = {config.vocab_size}")
+    assert config.vocab_size + 2 >= len(vocab), f'vocab_size({config.vocab_size + 2}) < len(vocab)({len(vocab)})'
+    print(f"Vocab Loaded, size = {config.vocab_size + 2}")
     
     train_loader, test_loader = get_data(vocab, config)
     print('Sentimental train data loaded')
@@ -54,6 +68,9 @@ def main(config):
     device = torch.device(config.device)
     pad_idx = vocab['<pad>'] 
     sep_idx = vocab['<sep>']
+    start_idx = vocab['<start>']
+    extract_idx = vocab['<extract>']
+    print(f'pad_idx={pad_idx}, sep_idx={sep_idx}, start_idx={start_idx}, extract_idx={extract_idx}')
     
     # 使用混合精度训练
     dtype = 'bfloat16' if config.device == 'cuda' and torch.cuda.is_bf16_supported() else 'float16'
@@ -75,24 +92,28 @@ def main(config):
         config.bias, 
     ).to(device)
     
-    if config.compile:
-        print('compiling the model... this might take a while')
-        model = torch.compile(model)
+    
     
     # 加载checkpoint manager
     checkpoint_manager = CheckpointManager(config.checkpoint_root)
     if config.resume_from is not None:
         print(f'resume from {config.resume_from}')
-        model = change_model_head(model, num_classes=2)
-        model, _, _ = checkpoint_manager.load(config.resume_from, model)
+        model = change_model_head(model, device, num_classes=2)
+        model = add_start_and_extract_to_model(model, vocab, device)
+        optimizer = model.configure_optimizers(config.weight_decay, config.lr, (config.beta1, config.beta2), config.device)
+        model, _, _ = checkpoint_manager.load(config.resume_from, model, optimizer, compile=False)
     elif config.base_model is not None:
         print(f'load base model from {config.base_model}')
-        model, _, _ = checkpoint_manager.load(config.base_model, model)
-        model = change_model_head(model, num_classes=2)
+        model, _, _ = checkpoint_manager.load(config.base_model, model, compile=False)
+        model = change_model_head(model, device, num_classes=2)
+        model = add_start_and_extract_to_model(model, vocab, device)
+        optimizer = model.configure_optimizers(config.weight_decay, config.lr, (config.beta1, config.beta2), config.device)
     else:
         raise ValueError('You should specify resume_from or base_model in config file')
     
-    optimizer = model.configure_optimizers(config.weight_decay, config.lr, (config.beta1, config.beta2), config.device)
+    if config.compile:
+        print('compiling the model... this might take a while')
+        model = torch.compile(model)
     
     
         
@@ -102,7 +123,8 @@ def main(config):
     while global_epoch < config.max_epoch:
         model.train()
         prog_bar = tqdm(train_loader)
-        for x, y in prog_bar:
+        for x, y, l in prog_bar:
+            # print(x.shape, y.shape, l.shape) # torch.Size([24, 256]) torch.Size([24, 1]) torch.Size([24])
             x = x.to(device)
             y = y.to(device)
             global_step += 1
@@ -112,8 +134,13 @@ def main(config):
                 param_group['lr'] = lr
             optimizer.zero_grad()
             with ctx:
-                logits, _ = model(x)
-                loss = nn.functional.cross_entropy(logits.view(-1, logits.size(-1)), y.view(-1), ignore_index=-1)
+                logits = model(x, sentimental=True)
+                if config.use_mask:
+                    logits = logits[torch.arange(len(logits)), l-1, :]
+                else:
+                    logits = logits[:, -1, :]
+                # print(logits.shape, y.shape) # torch.Size([24, 2]) torch.Size([24, 1])
+                loss = nn.functional.cross_entropy(logits, y.view(-1), ignore_index=-1)
                 accuracy = (logits.argmax(dim=-1) == y).float().mean()
             prog_bar.set_description(f'{global_step}|{global_epoch}|loss={loss.item():.8}|accuracy={accuracy:.4}')
             writer.add_scalar('loss', loss.item(), global_step)
@@ -138,12 +165,16 @@ def main(config):
         test_step = 0
         total_accuracy = 0
         with torch.no_grad():
-            for x, y in test_prog_bar:
+            for x, y, l in test_prog_bar:
                 x = x.to(device)
                 y = y.to(device)
                 with ctx:
-                    logits, _ = model(x)
-                    loss = nn.functional.cross_entropy(logits.view(-1, logits.size(-1)), y.view(-1), ignore_index=-1)
+                    logits = model(x, sentimental=True)
+                    if config.use_mask:
+                        logits = logits[torch.arange(len(logits)), l-1, :]
+                    else:
+                        logits = logits[:, -1, :]
+                    loss = nn.functional.cross_entropy(logits, y.view(-1), ignore_index=-1)
                     accuracy = (logits.argmax(dim=-1) == y).float().mean()
                 total_loss += loss.item()
                 total_accuracy += accuracy.item()

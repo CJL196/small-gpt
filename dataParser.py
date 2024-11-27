@@ -89,6 +89,14 @@ class Vocab:
         if not isinstance(indices, (list, tuple)):
             return self.idx_to_token[indices]
         return [self.idx_to_token[index] for index in indices]
+    
+    def insert_token(self, token):
+        if isinstance(token, (list, tuple)):
+            for t in token:
+                self.insert_token(t)
+        else:
+            self.idx_to_token.append(token)
+            self.token_to_idx[token] = len(self.idx_to_token) - 1
 
     @property
     def unk(self):  # 未知词元的索引为0
