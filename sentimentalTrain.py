@@ -167,7 +167,7 @@ def main(config):
                 checkpoint_manager.save(model, config, global_step, global_epoch, optimizer)
         
             
-        print(f'Testing')
+        # print(f'Testing')
         test_prog_bar = tqdm(test_loader)
         model.eval()
         total_loss = 0
