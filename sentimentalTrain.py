@@ -147,9 +147,9 @@ def main(config):
                 if config.use_mask:
                     logits = logits[torch.arange(len(logits)), l-1, :]
                 else:
-                    logits = logits[:, -1, :]
-                # print(logits.shape, y.shape) # torch.Size([24, 2]) torch.Size([24, 1])
-                loss = nn.functional.cross_entropy(logits, y.view(-1), ignore_index=-1)
+                    logits = logits[:, [-1], :]
+                # print(logits.shape, y.shape) # torch.Size([24, 1, 2]) torch.Size([24, 1])
+                loss = nn.functional.cross_entropy(logits.view(-1, logits.shape[-1]), y.view(-1), ignore_index=-1)
                 accuracy = (logits.argmax(dim=-1) == y).float().mean()
             prog_bar.set_description(f'{global_step}|{global_epoch}|loss={loss.item():.8}|accuracy={accuracy:.4}')
             writer.add_scalar('loss', loss.item(), global_step)
@@ -182,8 +182,8 @@ def main(config):
                     if config.use_mask:
                         logits = logits[torch.arange(len(logits)), l-1, :]
                     else:
-                        logits = logits[:, -1, :]
-                    loss = nn.functional.cross_entropy(logits, y.view(-1), ignore_index=-1)
+                        logits = logits[:, [-1], :]
+                    loss = nn.functional.cross_entropy(logits.view(-1, logits.shape[-1]), y.view(-1), ignore_index=-1)
                     accuracy = (logits.argmax(dim=-1) == y).float().mean()
                 total_loss += loss.item()
                 total_accuracy += accuracy.item()
