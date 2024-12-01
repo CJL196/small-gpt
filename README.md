@@ -64,6 +64,16 @@ python chat.py config/chat300M.yaml
 
 基于预训练的300M模型，训练情感分类器
 
+情感分类提供多个配置文件`config/sentimental*.yaml`，主要区别是是否mask、是否冻结参数，可用于消融实验
+
 ```bash
 python sentimentalTrain.py config/sentimental.yaml
 ```
+
+消融实验效果：
+
+|                   | 准确度    | 训练时间     |
+| ----------------- | --------- | ------------ |
+| 无mask&无冻结参数 | **91.3%** | 1hr          |
+| 有mask&无冻结参数 | **91.2%** | 1hr          |
+| 有mask&有冻结参数 | 87.8%     | **26.63min** |

@@ -52,33 +52,7 @@ def main(config):
         model, _, _ = checkpoint_manager.load(config.resume_from, model)
     
     print('Start Chatting')
-    # while True:
-    #     prompt = input('>>>')
-    #     if prompt == 'exit':
-    #         break
-    #     prompt_token = list(prompt) + ['<sep>']
-    #     # print('prompt_token', prompt_token)
-    #     idx = read_tokens_idx([prompt_token], vocab, show_bar=False)
-    #     # print(idx)
-    #     idx = torch.tensor(idx, dtype=torch.int64).to(device)
-    #     y = model.generate(idx, max_new_tokens=100, stop_token=pad_idx, temperature=1.0)
-    #     for c in y[0][len(prompt_token)+1:]:
-    #         c = vocab.to_tokens(c)
-    #         if c != '<sep>':
-    #             print(f'{c}', end='')
-    #         else:
-    #             print()
-    #     print()
     history = None
-    # initial_prompt = ['在吗', '在滴，又来找我聊天啦', '小姐姐真好看哟', '小哥哥帅捏']
-    # for p in initial_prompt:
-    #     p = list(p) + ['<sep>']
-    #     p = read_tokens_idx([p], vocab, seq_len=len(p), show_bar=False)
-    #     p = torch.tensor(p, dtype=torch.int64).to(device)
-    #     if history is None:
-    #         history = p
-    #     else:
-    #         history = torch.cat((history, p), dim=-1)
 
     while True:
         # history = None # 清空历史记录
@@ -88,28 +62,34 @@ def main(config):
         if prompt == 'flush':
             history = None
             continue
+        # 在每句话输入后加上<sep>，引导模型生成对上一句话的回复
         prompt_token = list(prompt) + ['<sep>']
+        # 裁剪上下文长度不超过block_size
         if len(prompt_token) > config.block_size:
             prompt_token = prompt_token[-config.block_size:]
+        # 将token转为标号
         prompt_idx = read_tokens_idx([prompt_token], vocab, seq_len=len(prompt_token), show_bar=False)
         prompt_idx = torch.tensor(prompt_idx, dtype=torch.int64).to(device)
+        # 将当前对话与历史对话拼接，让模型能够利用上下文信息
         if history is None:
             history = prompt_idx
         else:
             history = torch.cat((history, prompt_idx), dim=-1)
+        # 模型逐token生成，单次生成上限为100token
         for i in range(100):
+            # 裁剪上下文长度不超过block_size
             if history.shape[1] > config.block_size:
                 history = history[:, -config.block_size:]
+            # 生成单个token，设置温度为0.5
             pred = model.generate_once(history, temperature=0.5)
             c = vocab.to_tokens(pred)
-            
+            # 当生成<pad>或<sep>时，表示这句话说完了
             if c == '<pad>' or c == '<sep>':
                 history = torch.cat([history, torch.tensor([[sep_idx]]).to(device)], dim=1)
                 break
             else:
                 print(f'{c}', end='')
-            # else:
-            #     print()
+            # 更新历史记录
             history = torch.cat([history, pred], dim=1)
         print()
         # print('debug------')

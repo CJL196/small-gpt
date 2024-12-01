@@ -167,33 +167,33 @@ def main(config):
             if global_step % config.save_freq == 0:
                 checkpoint_manager.save(model, config, global_step, global_epoch, optimizer)
         
-            
-        # print(f'Testing')
-        test_prog_bar = tqdm(test_loader)
-        model.eval()
-        total_loss = 0
-        test_step = 0
-        total_accuracy = 0
-        with torch.no_grad():
-            for x, y, l in test_prog_bar:
-                x = x.to(device)
-                y = y.to(device)
-                with ctx:
-                    logits = model(x, sentimental=True)
-                    if config.use_mask:
-                        logits = logits[torch.arange(len(logits)), l-1, :]
-                        logits = logits.view(-1, 1, logits.shape[-1])
-                    else:
-                        logits = logits[:, [-1], :]
-                    loss = nn.functional.cross_entropy(logits.view(-1, logits.shape[-1]), y.view(-1), ignore_index=-1)
-                    accuracy = (logits.argmax(dim=-1) == y).float().mean()
-                total_loss += loss.item()
-                total_accuracy += accuracy.item()
-                test_prog_bar.set_description(f'{test_step}|{global_epoch}|loss={loss.item():.8}|accuracy={accuracy:.4}')
-                test_step += 1
-        writer.add_scalar('test_loss', total_loss/test_step, global_step)
-        writer.add_scalar('test_accuracy', total_accuracy/test_step, global_step)
-        model.train()
+            if global_step % config.eval_freq == 0:
+                # print(f'Testing')
+                test_prog_bar = tqdm(test_loader)
+                model.eval()
+                total_loss = 0
+                test_step = 0
+                total_accuracy = 0
+                with torch.no_grad():
+                    for x, y, l in test_prog_bar:
+                        x = x.to(device)
+                        y = y.to(device)
+                        with ctx:
+                            logits = model(x, sentimental=True)
+                            if config.use_mask:
+                                logits = logits[torch.arange(len(logits)), l-1, :]
+                                logits = logits.view(-1, 1, logits.shape[-1])
+                            else:
+                                logits = logits[:, [-1], :]
+                            loss = nn.functional.cross_entropy(logits.view(-1, logits.shape[-1]), y.view(-1), ignore_index=-1)
+                            accuracy = (logits.argmax(dim=-1) == y).float().mean()
+                        total_loss += loss.item()
+                        total_accuracy += accuracy.item()
+                        test_prog_bar.set_description(f'{test_step}|{global_epoch}|loss={loss.item():.8}|accuracy={accuracy:.4}')
+                        test_step += 1
+                writer.add_scalar('test_loss', total_loss/test_step, global_step)
+                writer.add_scalar('test_accuracy', total_accuracy/test_step, global_step)
+                model.train()
         global_epoch += 1
         
 def parse_args():
