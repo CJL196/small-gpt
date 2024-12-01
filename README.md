@@ -14,22 +14,56 @@ https://drive.google.com/file/d/1nEuew_KNpTMbyy7BO4c8bXMXN351RCPp/view
 
 https://raw.githubusercontent.com/SophonPlus/ChineseNlpCorpus/master/datasets/ChnSentiCorp_htl_all/ChnSentiCorp_htl_all.csv 
 
-下载数据集后存放在 data 文件夹下
+下载数据集后存放在 data 文件夹下，路径分别为`data/train.txt`和`data/ChnSentiCorp_htl_all.csv`
 
 ## 训练
 
-你需要指定配置文件，默认可用`config/default.yaml`
+模型参数量90M
 
 ```
-python train.py config/default.yaml     
+python train.py config/train90M.yaml     
+```
+
+模型参数量300M
+
+```
+python train.py config/train300M.yaml     
+```
+
+默认配置训练需要约16GB显存，你可以根据实际的硬件条件修改batch size
+
+## 预训练模型🤗
+
+你可以在hugging face🤗上下载预训练模型
+
+```bash
+mkdir -p checkpoints/pretrained
+cd checkpoints/pretrained
+wget https://huggingface.co/cjl196/small-gpt/resolve/main/cpt90M.pth?download=true -O cpt90M.pth
+wget https://huggingface.co/cjl196/small-gpt/resolve/main/cpt300M.pth?download=true -O cpt300M.pth
 ```
 
 ## 对话
 
-在对话前，请修改您的配置文件如`config/default.yaml`，修改`resume_from`指定一个模型的路径
+如果你希望使用自己训练的模型，在对话前，请修改配置文件中`resume_from`的值为模型的路径
 
-```
-python chat.py config/default.yaml
+使用下面的指令，和预训练的300M模型对话
+
+```bash
+python chat.py config/chat300M.yaml
 ```
 
-![demo](assets/demo1.jpg)
+## 对话效果
+
+![demo](assets/demo1.png)
+![demo](assets/demo2.png)
+![demo](assets/demo3.png)
+![demo](assets/demo4.png)
+
+## 情感分类
+
+基于预训练的300M模型，训练情感分类器
+
+```bash
+python sentimentalTrain.py config/sentimental.yaml
+```

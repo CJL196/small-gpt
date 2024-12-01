@@ -1,6 +1,5 @@
 # data config
 data_path: data/train.txt
-sentimental_data_path: data/ChnSentiCorp_htl_all.csv
 train_percent: 0.8
 # model config
 block_size: 256
@@ -11,21 +10,19 @@ n_embd: 960
 dropout: 0.05
 bias: True
 compile: True
-use_mask: True
 # training config
 max_epoch : 1919810
 tensorboard_path :  ./tensorboard
 device: cuda
-frozen: False # 仅训练输出层和最后一个transformer块，冻结模型其余部分
-
-
+eval_freq: 500
+eval_steps: 1000
 train_batch: 24
 test_batch: 8
 grad_clip: 1.0
 # learning rate
 lr : 2e-4
-warmup_steps: 100
-decay_steps: 10000
+warmup_steps: 1000
+decay_steps: 100000
 min_lr: 1e-5
 
 
@@ -35,8 +32,7 @@ beta1: 0.9
 beta2: 0.95
 # checkpoint config
 checkpoint_root: ./checkpoints
-save_freq: 1000 # save when global_step % save_freq == 0
-base_model: checkpoints/pretrained/cpt300M.pth
+save_freq: 4000 # save when global_step % save_freq == 0
 resume_from: NULL
 # other config
 seed :  114514

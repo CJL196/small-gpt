@@ -146,6 +146,7 @@ def main(config):
                 logits = model(x, sentimental=True)
                 if config.use_mask:
                     logits = logits[torch.arange(len(logits)), l-1, :]
+                    logits = logits.view(-1, 1, logits.shape[-1])
                 else:
                     logits = logits[:, [-1], :]
                 # print(logits.shape, y.shape) # torch.Size([24, 1, 2]) torch.Size([24, 1])
@@ -181,6 +182,7 @@ def main(config):
                     logits = model(x, sentimental=True)
                     if config.use_mask:
                         logits = logits[torch.arange(len(logits)), l-1, :]
+                        logits = logits.view(-1, 1, logits.shape[-1])
                     else:
                         logits = logits[:, [-1], :]
                     loss = nn.functional.cross_entropy(logits.view(-1, logits.shape[-1]), y.view(-1), ignore_index=-1)
