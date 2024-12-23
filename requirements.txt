@@ -3,3 +3,4 @@ omegaconf
 pandas
 torch
 tqdm
+tensorboard
