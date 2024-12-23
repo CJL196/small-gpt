@@ -16,6 +16,12 @@ https://raw.githubusercontent.com/SophonPlus/ChineseNlpCorpus/master/datasets/Ch
 
 下载数据集后存放在 data 文件夹下，路径分别为`data/train.txt`和`data/ChnSentiCorp_htl_all.csv`
 
+## 环境配置
+
+```bash
+pip install -r requirements.txt
+```
+
 ## 训练
 
 模型参数量90M

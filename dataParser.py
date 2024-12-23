@@ -1,7 +1,6 @@
 import collections
 import torch
 from tqdm import tqdm
-from multiprocessing import Pool
 import numpy as np
 
 def read_tokens(path:str):
