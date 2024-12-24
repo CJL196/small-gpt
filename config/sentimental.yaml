@@ -14,7 +14,7 @@ compile: True
 use_mask: True
 # training config
 max_epoch : 20
-tensorboard_path :  ./tensorboard/1
+tensorboard_path :  ./tensorboard/mask&not_frozen
 device: cuda
 eval_freq: 100
 frozen: False # 仅训练输出层和最后一个transformer块，冻结模型其余部分

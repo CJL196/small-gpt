@@ -73,7 +73,12 @@ python chat.py config/chat300M.yaml
 情感分类提供多个配置文件`config/sentimental*.yaml`，主要区别是是否mask、是否冻结参数，可用于消融实验
 
 ```bash
+# mask&not_frozen
 python sentimentalTrain.py config/sentimental.yaml
+# mask&frozen
+python sentimentalTrain.py config/sentimental1.yaml
+# no_mask&not_frozen
+python sentimentalTrain.py config/sentimental2.yaml
 ```
 
 消融实验效果：
