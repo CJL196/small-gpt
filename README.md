@@ -1,8 +1,6 @@
 # Small GPT
 
-本项目参考：
-- [动手学深度学习](https://zh.d2l.ai/)
-- [nanoGPT](https://github.com/karpathy/nanoGPT)
+本项目训练了一个小型GPT模型，并微调用于情感分类
 
 ## 准备数据集
 
@@ -88,3 +86,10 @@ python sentimentalTrain.py config/sentimental2.yaml
 | 无mask&无冻结参数 | **91.3%** | 1hr          |
 | 有mask&无冻结参数 | **91.2%** | 1hr          |
 | 有mask&有冻结参数 | 87.8%     | **26.63min** |
+
+## 致谢
+
+本项目参考以下仓库或教程，在此特别鸣谢
+
+- [动手学深度学习](https://zh.d2l.ai/)
+- [nanoGPT](https://github.com/karpathy/nanoGPT)
