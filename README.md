@@ -1,18 +1,18 @@
 # Small GPT
 
-本项目训练了一个小型GPT模型，并微调用于情感分类
+本项目训练了一个小型GPT模型，能够进行简单的对话，并微调用于情感分类
 
 ## 准备数据集
 
-中文闲聊对话：
+数据集存放在 data 文件夹下
+
+中文闲聊对话`data/train.txt`
 
 https://drive.google.com/file/d/1nEuew_KNpTMbyy7BO4c8bXMXN351RCPp/view
 
-情感分类：
+情感分类`data/ChnSentiCorp_htl_all.csv`
 
 https://raw.githubusercontent.com/SophonPlus/ChineseNlpCorpus/master/datasets/ChnSentiCorp_htl_all/ChnSentiCorp_htl_all.csv 
-
-下载数据集后存放在 data 文件夹下，路径分别为`data/train.txt`和`data/ChnSentiCorp_htl_all.csv`
 
 ## 环境配置
 
