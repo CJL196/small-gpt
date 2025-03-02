@@ -1,95 +1,97 @@
-# Small GPT
+# Small GPT  
 
-本项目训练了一个小型GPT模型，能够进行简单的对话，并微调用于情感分类
+[中文README](./README_zh.md)
 
-## 准备数据集
+This project trains a small GPT model capable of simple conversations and fine-tuning for sentiment classification.  
 
-数据集存放在 data 文件夹下
+## Preparing the Dataset  
 
-中文闲聊对话`data/train.txt`
+The datasets are stored in the `data` folder.  
 
-https://drive.google.com/file/d/1nEuew_KNpTMbyy7BO4c8bXMXN351RCPp/view
+- **Chinese Chat Dataset**: `data/train.txt`  
+  [Download](https://drive.google.com/file/d/1nEuew_KNpTMbyy7BO4c8bXMXN351RCPp/view)  
 
-情感分类`data/ChnSentiCorp_htl_all.csv`
+- **Sentiment Classification Dataset**: `data/ChnSentiCorp_htl_all.csv`  
+  [Download](https://raw.githubusercontent.com/SophonPlus/ChineseNlpCorpus/master/datasets/ChnSentiCorp_htl_all/ChnSentiCorp_htl_all.csv)  
 
-https://raw.githubusercontent.com/SophonPlus/ChineseNlpCorpus/master/datasets/ChnSentiCorp_htl_all/ChnSentiCorp_htl_all.csv 
+## Environment Setup  
 
-## 环境配置
+Install the required dependencies:  
 
 ```bash
 pip install -r requirements.txt
-```
+```  
 
-## 训练
+## Training  
 
-模型参数量90M
+- **90M parameter model**:  
 
-```
-python train.py config/train90M.yaml     
-```
+  ```bash
+  python train.py config/train90M.yaml     
+  ```  
 
-模型参数量300M
+- **300M parameter model**:  
 
-```
-python train.py config/train300M.yaml     
-```
+  ```bash
+  python train.py config/train300M.yaml     
+  ```  
 
-默认配置训练需要约16GB显存，你可以根据实际的硬件条件修改batch size
+By default, training requires approximately **16GB of VRAM**. You can adjust the batch size based on your hardware resources.  
 
-## 预训练模型🤗
+## Pretrained Models 🤗  
 
-你可以在hugging face🤗上下载预训练模型
+You can download the pretrained models from Hugging Face 🤗:  
 
 ```bash
 mkdir -p checkpoints/pretrained
 cd checkpoints/pretrained
-wget https://huggingface.co/cjl196/small-gpt/resolve/main/cpt90M.pth?download=true -O cpt90M.pth
-wget https://huggingface.co/cjl196/small-gpt/resolve/main/cpt300M.pth?download=true -O cpt300M.pth
-```
+wget https://huggingface.co/cjl196/small-gpt/resolve/main/cpt90M.pth -O cpt90M.pth
+wget https://huggingface.co/cjl196/small-gpt/resolve/main/cpt300M.pth -O cpt300M.pth
+```  
 
-## 对话
+## Chatting  
 
-如果你希望使用自己训练的模型，在对话前，请修改配置文件中`resume_from`的值为模型的路径
+If you want to use your own trained model, modify the `resume_from` field in the configuration file to point to your model's path.  
 
-使用下面的指令，和预训练的300M模型对话
+To chat with the pretrained **300M model**, run:  
 
 ```bash
 python chat.py config/chat300M.yaml
-```
+```  
 
-## 对话效果
+## Chat Examples  
 
-![demo](assets/demo1.png)
-![demo](assets/demo2.png)
-![demo](assets/demo3.png)
-![demo](assets/demo4.png)
+![demo](assets/demo1.png)  
+![demo](assets/demo2.png)  
+![demo](assets/demo3.png)  
+![demo](assets/demo4.png)  
 
-## 情感分类
+## Sentiment Classification  
 
-基于预训练的300M模型，训练情感分类器
+Fine-tune a sentiment classifier based on the pretrained **300M model**.  
 
-情感分类提供多个配置文件`config/sentimental*.yaml`，主要区别是是否mask、是否冻结参数，可用于消融实验
+Several configuration files (`config/sentimental*.yaml`) are provided, differing in whether masking is applied and whether parameters are frozen, allowing for ablation experiments.  
 
 ```bash
-# mask&not_frozen
+# mask & not frozen
 python sentimentalTrain.py config/sentimental.yaml
-# mask&frozen
+# mask & frozen
 python sentimentalTrain.py config/sentimental1.yaml
-# no_mask&not_frozen
+# no mask & not frozen
 python sentimentalTrain.py config/sentimental2.yaml
-```
+```  
 
-消融实验效果：
+### Ablation Study Results  
 
-|                   | 准确度    | 训练时间     |
-| ----------------- | --------- | ------------ |
-| 无mask&无冻结参数 | **91.3%** | 1hr          |
-| 有mask&无冻结参数 | **91.2%** | 1hr          |
-| 有mask&有冻结参数 | 87.8%     | **26.63min** |
+| Configuration      | Accuracy  | Training Time  |  
+| ----------------- | --------- | -------------- |  
+| No mask & not frozen | **91.3%** | 1hr           |  
+| Mask & not frozen | **91.2%** | 1hr           |  
+| Mask & frozen    | 87.8%     | **26.63min**   |  
 
-## 致谢
+## Acknowledgments  
 
-本项目参考以下仓库或教程，在此特别鸣谢
+This project is inspired by the following repositories and tutorials. Special thanks to:  
 
-- [动手学深度学习](https://zh.d2l.ai/)
-- [nanoGPT](https://github.com/karpathy/nanoGPT)
+- [Dive into Deep Learning](https://zh.d2l.ai/)  
+- [nanoGPT](https://github.com/karpathy/nanoGPT)  
