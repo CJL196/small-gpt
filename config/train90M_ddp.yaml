@@ -9,20 +9,20 @@ n_head: 12
 n_embd: 768
 dropout: 0.2
 bias: True
-compile: True
+compile: False  # DDP模式下暂时禁用compile
 # training config
 max_epoch : 1919810
 tensorboard_path :  ./tensorboard
 device: cuda
 eval_freq: 500
 eval_steps: 1000
-train_batch: 80
-test_batch: 8
+train_batch: 160  # 总batch size，会在多个GPU之间自动分配
+test_batch: 16
 grad_clip: 1.0
 # distributed training config
-ddp: False  # 是否启用分布式训练
+ddp: True  # 启用分布式训练
 local_rank: -1  # 本地进程排名，由 torch.distributed.launch 自动设置
-world_size: 1  # 总进程数
+world_size: 2  # 总进程数（GPU数量）
 # learning rate
 lr : 3e-4
 warmup_steps: 2000
@@ -39,4 +39,4 @@ checkpoint_root: ./checkpoints
 save_freq: 4000 # save when global_step % save_freq == 0
 resume_from: NULL
 # other config
-seed :  114514
+seed :  114514 

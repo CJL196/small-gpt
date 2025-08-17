@@ -22,7 +22,9 @@ Install the required dependencies:
 pip install -r requirements.txt
 ```  
 
-## Training  
+## Pretraining  
+
+### Single GPU Training
 
 - **90M parameter model**:  
 
@@ -35,8 +37,77 @@ pip install -r requirements.txt
   ```bash
   python train.py config/train300M.yaml     
   ```  
-
 By default, training requires approximately **16GB of VRAM**. You can adjust the batch size based on your hardware resources.  
+
+### Distributed Training (Multi-GPU)
+
+Enabling distributed training can significantly accelerate the training process. The project now supports DistributedDataParallel (DDP).
+
+#### Single-Node Multi-GPU Training
+
+Train 300M model with 2 GPUs:
+
+```bash
+torchrun --nproc_per_node=2 train.py config/train300M_ddp.yaml
+```
+
+Train 300M model with 4 GPUs:
+
+```bash
+torchrun --nproc_per_node=4 train.py config/train300M_ddp.yaml
+```
+
+Train 300M model with 8 GPUs:
+
+```bash
+torchrun --nproc_per_node=8 train.py config/train300M_ddp.yaml
+```
+
+Train 90M model with 2 GPUs:
+
+```bash
+torchrun --nproc_per_node=2 train.py config/train90M_ddp.yaml
+```
+
+#### Multi-Node Distributed Training (Cross-Machine)
+
+If you have multiple machines, you can perform cross-node distributed training for greater acceleration.
+
+**Example: 2 machines, 8 GPUs each (total 16 GPUs)**
+
+Run on **master node** (node 0):
+```bash
+torchrun --nnodes=2 --node_rank=0 --nproc_per_node=8 \
+  --master_addr=192.168.1.100 --master_port=29500 \
+  train.py config/train300M_ddp.yaml
+```
+
+Run on **worker node** (node 1):
+```bash
+torchrun --nnodes=2 --node_rank=1 --nproc_per_node=8 \
+  --master_addr=192.168.1.100 --master_port=29500 \
+  train.py config/train300M_ddp.yaml
+```
+
+**Parameter Descriptions:**
+- `--nnodes=2`: Total number of nodes (machines)
+- `--node_rank=0/1`: Current node ID (master node is 0)
+- `--nproc_per_node=8`: Number of GPUs per node
+- `--master_addr`: IP address of the master node
+- `--master_port`: Communication port (ensure port is not in use)
+
+**Environment Requirements:**
+- All nodes must be able to access each other through the network
+- All nodes must have the same code and data
+- Firewall must allow communication on the specified port
+- High-speed network (such as InfiniBand) is recommended for optimal performance
+
+**Important Notes:**
+- Distributed training automatically distributes batch size across multiple GPUs
+- Only the master process (rank 0) saves models and writes tensorboard logs
+- Ensure all GPUs have sufficient VRAM
+- The `train_batch` in distributed config files is the total batch size, automatically distributed across GPUs
+
 
 ## Pretrained Models 🤗  
 

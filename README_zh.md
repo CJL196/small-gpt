@@ -20,7 +20,9 @@ https://raw.githubusercontent.com/SophonPlus/ChineseNlpCorpus/master/datasets/Ch
 pip install -r requirements.txt
 ```
 
-## 训练
+## 预训练
+
+### 单GPU训练
 
 模型参数量90M
 
@@ -35,6 +37,75 @@ python train.py config/train300M.yaml
 ```
 
 默认配置训练需要约16GB显存，你可以根据实际的硬件条件修改batch size
+
+### 分布式训练（多GPU）
+
+启用分布式训练可以显著加速训练过程。项目已支持 DistributedDataParallel (DDP)。
+
+#### 单节点多GPU训练
+
+使用2个GPU训练300M模型：
+
+```bash
+torchrun --nproc_per_node=2 train.py config/train300M_ddp.yaml
+```
+
+使用4个GPU训练300M模型：
+
+```bash
+torchrun --nproc_per_node=4 train.py config/train300M_ddp.yaml
+```
+
+使用8个GPU训练300M模型：
+
+```bash
+torchrun --nproc_per_node=8 train.py config/train300M_ddp.yaml
+```
+
+使用2个GPU训练90M模型：
+
+```bash
+torchrun --nproc_per_node=2 train.py config/train90M_ddp.yaml
+```
+
+#### 多节点分布式训练（跨机器）
+
+如果你有多台机器，可以进行跨节点的分布式训练以获得更大的加速比。
+
+**示例：2台机器，每台8个GPU（总共16个GPU）**
+
+在**主节点**（节点0）上运行：
+```bash
+torchrun --nnodes=2 --node_rank=0 --nproc_per_node=8 \
+  --master_addr=192.168.1.100 --master_port=29500 \
+  train.py config/train300M_ddp.yaml
+```
+
+在**从节点**（节点1）上运行：
+```bash
+torchrun --nnodes=2 --node_rank=1 --nproc_per_node=8 \
+  --master_addr=192.168.1.100 --master_port=29500 \
+  train.py config/train300M_ddp.yaml
+```
+
+**参数说明：**
+- `--nnodes=2`: 总共2个节点（机器）
+- `--node_rank=0/1`: 当前节点编号（主节点为0）
+- `--nproc_per_node=8`: 每个节点使用的GPU数量
+- `--master_addr`: 主节点的IP地址
+- `--master_port`: 通信端口（确保端口未被占用）
+
+**环境要求：**
+- 所有节点必须能够通过网络相互访问
+- 所有节点必须有相同的代码和数据
+- 防火墙允许指定端口的通信
+- 建议使用高速网络（如InfiniBand）以获得最佳性能
+
+**注意事项：**
+- 分布式训练会自动在多个GPU之间分配batch size
+- 只有主进程（rank 0）会保存模型和写入tensorboard日志
+- 确保所有GPU都有足够的显存
+- 分布式配置文件中的 `train_batch` 是总batch size，会被自动分配到各个GPU
 
 ## 预训练模型🤗
 

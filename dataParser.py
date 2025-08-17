@@ -2,6 +2,7 @@ import collections
 import torch
 from tqdm import tqdm
 import numpy as np
+import os
 
 def read_tokens(path:str):
     """读取数据
@@ -36,18 +37,37 @@ def read_tokens_idx(tokens, vocab, seq_len=None, show_bar=True):
         seq_len = max([len(token) for token in tokens])
     ret = np.zeros((len(tokens), seq_len), dtype=np.int16)
     pad_idx = vocab['<pad>'] # 大多数token为<pad>，避免重复查询vocab
-    if show_bar:
-        for i, sentence in tqdm(enumerate(tokens), desc='Loading tokens idx', total=len(tokens)):
-            for j in range(seq_len):
-                if j < len(sentence):
-                    ret[i][j] = vocab[sentence[j]]
-            ret[i][len(sentence):] = pad_idx
+    
+    # 在分布式训练中，只有主进程显示进度条
+    def is_main_process():
+        # 检查是否在分布式环境中
+        if 'RANK' in os.environ:
+            return int(os.environ['RANK']) == 0
+        elif 'LOCAL_RANK' in os.environ:
+            return int(os.environ['LOCAL_RANK']) == 0
+        else:
+            # 尝试使用torch.distributed
+            try:
+                import torch.distributed as dist
+                if dist.is_initialized():
+                    return dist.get_rank() == 0
+            except:
+                pass
+            return True  # 非分布式环境，显示进度条
+    
+    # 只有主进程或非分布式环境才显示进度条
+    should_show_bar = show_bar and is_main_process()
+    
+    if should_show_bar:
+        iterator = tqdm(enumerate(tokens), desc='Loading tokens idx', total=len(tokens))
     else:
-        for i, sentence in enumerate(tokens):
-            for j in range(seq_len):
-                if j < len(sentence):
-                    ret[i][j] = vocab[sentence[j]]
-            ret[i][len(sentence):] = pad_idx
+        iterator = enumerate(tokens)
+        
+    for i, sentence in iterator:
+        for j in range(seq_len):
+            if j < len(sentence):
+                ret[i][j] = vocab[sentence[j]]
+        ret[i][len(sentence):] = pad_idx
     return ret
 
 def build_vocab(tokens):
@@ -112,13 +132,17 @@ def count_corpus(tokens):
     tokens = [token for line in tokens for token in line]
     return collections.Counter(tokens)
 
-def tokens_dataloader(tokens_idx, batch_size, pad_idx, shuffle=True):
+def tokens_dataloader(tokens_idx, batch_size, pad_idx, shuffle=True, sampler=None):
     """构造一个PyTorch数据迭代器"""
     from torch.utils import data
     add = torch.full((tokens_idx.shape[0], 1), pad_idx, dtype=torch.int64)
     y = torch.cat([tokens_idx[:, 1:], add], dim=-1)
     dataset = data.TensorDataset(tokens_idx, y)
-    return data.DataLoader(dataset, batch_size, shuffle=shuffle)
+    # 如果提供了sampler，则不能同时使用shuffle
+    if sampler is not None:
+        return data.DataLoader(dataset, batch_size, sampler=sampler)
+    else:
+        return data.DataLoader(dataset, batch_size, shuffle=shuffle)
 
 if __name__ == "__main__":
     path = 'data/train.txt'

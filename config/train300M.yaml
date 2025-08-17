@@ -19,6 +19,10 @@ eval_steps: 1000
 train_batch: 24
 test_batch: 8
 grad_clip: 1.0
+# distributed training config
+ddp: False  # 是否启用分布式训练
+local_rank: -1  # 本地进程排名，由 torch.distributed.launch 自动设置
+world_size: 1  # 总进程数
 # learning rate
 lr : 2e-4
 warmup_steps: 1000
