@@ -1,0 +1,47 @@
+# data config
+data_path: data/train.txt
+train_percent: 0.8
+# model config
+block_size: 256
+vocab_size: 7587
+n_layer: 26
+n_head: 15
+n_embd: 960
+dropout: 0.05
+bias: True
+compile: False  # FSDP模式下禁用compile
+
+# training config
+max_epoch : 1919810
+tensorboard_path :  ./tensorboard
+device: cuda
+eval_freq: 500
+eval_steps: 1000
+train_batch: 48  # 总batch size，会在多个GPU之间自动分配
+test_batch: 16
+grad_clip: 1.0
+
+# FSDP distributed training config
+fsdp: True  # 启用FSDP训练
+local_rank: -1  # 本地进程排名，由 torchrun 自动设置
+world_size: 2  # 总进程数（GPU数量）
+sharding_strategy: FULL_SHARD  # 分片策略: FULL_SHARD(完全分片), SHARD_GRAD_OP(只分片梯度), NO_SHARD(不分片), HYBRID_SHARD(混合分片)
+
+# learning rate
+lr : 2e-4
+warmup_steps: 1000
+decay_steps: 100000
+min_lr: 1e-5
+
+# AdamW optimizer
+weight_decay : 1e-1
+beta1: 0.9
+beta2: 0.95
+
+# checkpoint config
+checkpoint_root: ./checkpoints
+save_freq: 4000 # save when global_step % save_freq == 0
+resume_from: NULL
+
+# other config
+seed :  114514 

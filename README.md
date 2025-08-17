@@ -41,7 +41,9 @@ By default, training requires approximately **16GB of VRAM**. You can adjust the
 
 ### Distributed Training (Multi-GPU)
 
-Enabling distributed training can significantly accelerate the training process. The project now supports DistributedDataParallel (DDP).
+Enabling distributed training can significantly accelerate the training process. The project supports two distributed training methods:
+- **DDP (DistributedDataParallel)**: Traditional distributed training, suitable for most scenarios
+- **FSDP (Fully Sharded Data Parallel)**: Advanced distributed training, supports larger models by sharding parameters across GPUs
 
 #### Single-Node Multi-GPU Training
 
@@ -107,6 +109,38 @@ torchrun --nnodes=2 --node_rank=1 --nproc_per_node=8 \
 - Only the master process (rank 0) saves models and writes tensorboard logs
 - Ensure all GPUs have sufficient VRAM
 - The `train_batch` in distributed config files is the total batch size, automatically distributed across GPUs
+
+#### FSDP Training (Advanced)
+
+FSDP enables training larger models by sharding parameters across GPUs. For detailed usage, see [FSDP_README.md](./FSDP_README.md).
+
+**Single-Node FSDP Training:**
+
+Train 300M model with 2 GPUs using FSDP:
+```bash
+torchrun --nproc_per_node=2 train_fsdp.py config/train300M_fsdp.yaml
+```
+
+Train 300M model with 4 GPUs using FSDP:
+```bash
+torchrun --nproc_per_node=4 train_fsdp.py config/train300M_fsdp.yaml
+```
+
+**Multi-Node FSDP Training:**
+
+Master node:
+```bash
+torchrun --nnodes=2 --node_rank=0 --nproc_per_node=4 \
+  --master_addr=192.168.1.100 --master_port=29500 \
+  train_fsdp.py config/train300M_fsdp.yaml
+```
+
+Worker node:
+```bash
+torchrun --nnodes=2 --node_rank=1 --nproc_per_node=4 \
+  --master_addr=192.168.1.100 --master_port=29500 \
+  train_fsdp.py config/train300M_fsdp.yaml
+```
 
 
 ## Pretrained Models 🤗  
